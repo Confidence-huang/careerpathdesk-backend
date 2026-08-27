@@ -1,0 +1,6 @@
+.git
+.runtime
+bin
+coverage.out
+*.test
+*.prof

@@ -1,0 +1,38 @@
+# syntax=docker/dockerfile:1.7
+
+# CareerPathDesk API 镜像：第一阶段用固定 Go 工具链编译静态二进制，第二阶段只保留
+# 运行所需的证书、时区和可执行文件。运行配置与秘密必须在容器启动时显式挂载。
+
+# --- 使用与 go.mod 一致且不可变的 Go 1.26.6 linux/amd64 构建环境 ---
+FROM m.daocloud.io/docker.io/library/golang:1.26.6-alpine3.23@sha256:e7ca5c6ac92d6f71a5b9e7f1e9178a3560c05c8be005ce560e188dbda00a86f0 AS build
+
+WORKDIR /workspace
+
+COPY go.mod go.sum ./
+ARG GOPROXY=https://goproxy.cn,direct
+RUN GOPROXY="$GOPROXY" go mod download
+
+COPY . ./
+
+ARG TARGETOS=linux
+ARG TARGETARCH=amd64
+ARG CAREERPATH_BUILD_VERSION=development
+RUN CGO_ENABLED=0 GOOS="$TARGETOS" GOARCH="$TARGETARCH" \
+    go build -trimpath -buildvcs=false \
+    -ldflags="-s -w -X main.version=${CAREERPATH_BUILD_VERSION}" \
+    -o /out/careerpathdesk-api ./cmd/api
+
+# --- 只把静态 API 产物交给固定、非 root 的最小运行环境 ---
+FROM m.daocloud.io/docker.io/library/alpine:3.23.3@sha256:25109184c71bdad752c8312a8623239686a9a2071e8825f20acb8f2198c3f659 AS runtime
+
+RUN apk add --no-cache ca-certificates tzdata && \
+    addgroup -S -g 10001 careerpathdesk && \
+    adduser -S -D -H -u 10001 -G careerpathdesk careerpathdesk
+
+WORKDIR /app
+COPY --from=build --chown=10001:10001 /out/careerpathdesk-api /app/careerpathdesk-api
+
+USER 10001:10001
+EXPOSE 8180
+
+ENTRYPOINT ["/app/careerpathdesk-api"]

@@ -1,0 +1,35 @@
+# CareerPathDesk local database: this Compose file is valid only for synthetic data.
+name: careerpathdesk-synthetic
+
+services:
+  postgres:
+    # DaoCloud only relays the Docker Official Image; the pinned upstream digest is unchanged.
+    image: m.daocloud.io/docker.io/library/postgres:18.4-alpine@sha256:9a8afca54e7861fd90fab5fdf4c42477a6b1cb7d293595148e674e0a3181de15
+    restart: "no"
+    container_name: careerpathdesk-synthetic-postgres
+    shm_size: 128mb
+    environment:
+      POSTGRES_DB: careerpathdesk_synthetic
+      POSTGRES_USER: careerpathdesk
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    ports:
+      - "127.0.0.1:55432:5432"
+    secrets:
+      - postgres_password
+    volumes:
+      - careerpathdesk_synthetic_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+    security_opt:
+      - no-new-privileges:true
+
+secrets:
+  postgres_password:
+    file: ../../.runtime/postgres_password
+
+volumes:
+  careerpathdesk_synthetic_data:
+    name: careerpathdesk-synthetic-postgres-data
