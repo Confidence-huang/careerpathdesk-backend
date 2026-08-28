@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/readme/hero.svg" alt="CareerPathDesk Go 后端的认证、范围、事务与审计链路" width="100%">
+  <img src="./assets/readme/hero.svg" alt="CareerPathDesk Go 后端的认证、范围、事务与审计链路" width="100%">
 </p>
 
 <p align="center">
@@ -8,12 +8,14 @@
 
 <p align="center">
   <a href="https://confidence-huang.github.io/careerpathdesk-website/">项目官网</a> ·
-  <a href="https://github.com/Confidence-huang/careerpathdesk-frontend">前端仓库</a>
+  <a href="https://github.com/Confidence-huang/careerpathdesk-frontend">产品前端</a>
 </p>
 
-## 后端负责什么
+# CareerPathDesk Backend
 
-CareerPathDesk 后端把身份、权限范围、业务写入和最小审计证据放在同一个服务边界中。它服务三类主体，但不会因为前端隐藏了按钮就跳过服务端复核。
+> 把身份、对象范围、业务写入和最小审计证据放在同一个服务边界中。
+
+## 先看请求如何落库
 
 ```text
 HTTP 请求
@@ -24,7 +26,7 @@ HTTP 请求
   → PostgreSQL
 ```
 
-主要模块包括账号与 MFA、学生档案、跟进、邀请、测评、关注事项、隐私请求、数据导出、留存和团队计划。
+后端不会因为前端隐藏了按钮就跳过服务端复核。主要模块包括账号与 MFA、学生档案、跟进、邀请、测评、关注事项、隐私请求、数据导出、留存和团队计划。
 
 ## 设计边界
 
@@ -37,27 +39,18 @@ HTTP 请求
 | 学生入口 | 依赖一次性邀请与受限会话，不复用员工工作台权限 |
 | 日志 | 输出稳定事件分类，不记录密码、令牌或业务行内容 |
 
-## 快速验证
+## 本地快速验证
 
-需要 Go 1.26+、Docker 与 Docker Compose。默认只创建名为 `careerpathdesk-synthetic` 的本地资源。
+需要 Go 1.26.6+、Docker 与 Docker Compose。默认只创建名为 `careerpathdesk-synthetic` 的本地资源。
 
 ```bash
 git clone https://github.com/Confidence-huang/careerpathdesk-backend.git
 cd careerpathdesk-backend
-bash scripts/prepare-synthetic.sh
-docker compose -f deploy/docker/compose.synthetic.yaml up -d --wait
-bash scripts/with-synthetic-env.sh go test ./... -count=1
-go vet ./...
-go build -trimpath -o bin/careerpathdesk-api ./cmd/api
+make verify
+make db-down
 ```
 
-验证结束后可停止容器：
-
-```bash
-docker compose -f deploy/docker/compose.synthetic.yaml down
-```
-
-若还要删除本仓库创建的合成数据库卷，可在确认不再需要本地测试数据后执行 `docker compose -f deploy/docker/compose.synthetic.yaml down -v`。
+`make verify` 会准备合成运行时，启动隔离的 PostgreSQL，运行 Go 测试、静态检查、构建和 Compose 配置检查。若只想分步执行，可查看 [Makefile](./Makefile) 中的 `prepare`、`db-up`、`test`、`vet` 和 `build` 目标。
 
 ## 目录
 
@@ -73,7 +66,7 @@ tests/performance/   # 合成规模与 P95 行为验证
 
 ## 配置原则
 
-从 [.env.example](.env.example) 理解配置项，但不要把它复制成已提交的真实配置。密码、Ed25519 私钥和合成账号口令由 `scripts/prepare-synthetic.sh` 单独生成，脚本不会打印其内容。
+从 [`.env.example`](./.env.example) 理解配置项，但不要把它复制成已提交的真实配置。密码、Ed25519 私钥和合成账号口令由 `scripts/prepare-synthetic.sh` 单独生成，脚本不会打印其内容。
 
 ## 公共仓库边界
 
@@ -81,4 +74,4 @@ tests/performance/   # 合成规模与 P95 行为验证
 
 ## 许可证
 
-采用 [GNU Affero General Public License v3.0](LICENSE)。通过网络提供修改后的服务时，请向相应用户提供对应源代码。
+采用 [GNU Affero General Public License v3.0](./LICENSE)。通过网络提供修改后的服务时，请向相应用户提供对应源代码。
